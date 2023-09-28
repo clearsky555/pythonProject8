@@ -17,3 +17,18 @@ class UserState(StatesGroup):
     city = State()
     district = State()
     country = State()
+
+
+class SpouseState(StatesGroup):
+    name = State()
+    surname = State()
+    birth_date = State()
+    gender = State()
+    birth_city = State()
+    birth_country = State()
+    upload_photo = State()
+    number_of_children = State()
+
+
+class ChildState(StatesGroup):
+    name = State()

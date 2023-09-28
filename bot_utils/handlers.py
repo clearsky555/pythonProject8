@@ -7,7 +7,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button
-from state import UserState
+from state import UserState, SpouseState, ChildState
 from db.database import users_manager
 
 
@@ -250,8 +250,6 @@ async def child_and_spouse(message: Message, state: FSMContext):
     data = await state.get_data()
     marital_status = data['marital_status']
 
-
-
     await state.update_data(country=message.text)
 
     yes_btn: InlineKeyboardButton = InlineKeyboardButton(
@@ -265,11 +263,11 @@ async def child_and_spouse(message: Message, state: FSMContext):
         callback_data='end')
     if marital_status == 'Married and my spouse is NOT a U.S.citizen':
         keyboard: list[list[InlineKeyboardButton]] = [
-            [no_btn, end_btn],
+            [yes_btn, no_btn, end_btn],
             ]
     else:
         keyboard: list[list[InlineKeyboardButton]] = [
-            [yes_btn, no_btn, end_btn],
+            [no_btn, end_btn],
             ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
@@ -327,4 +325,176 @@ async def end(callback: CallbackQuery, state: FSMContext):
     except Exception as ex:
         print(ex)
         await callback.message.answer(f'произошла ошибка {ex}!')
+
+    finally:
+        await state.clear()
+
+
+@router.callback_query(F.data == 'spouse_yes')
+async def spouse_name(callback: CallbackQuery, state: FSMContext):
+
+    data = await state.get_data()
+    users_manager.create_table()
+    telegram_user_id = callback.message.from_user.id
+    education_level = data['education_level']
+    marital_status = data['marital_status']
+    name = data['name']
+    surname = data['surname']
+    gender = data['gender']
+    birth_date = data['birth_date']
+    birth_city = data['birth_city']
+    birth_country = data['birth_country']
+    eligibility = data['eligibility']
+    try:
+        country_claiming_eligibility = data['country_claiming_eligibility']
+    except KeyError:
+        country_claiming_eligibility = None
+    photo_url = data['photo_url']
+    address_line_1 = data['address_line_1']
+    city = data['city']
+    district = data['district']
+    country = data['country']
+    user_data = {
+        'telegram_user_id': telegram_user_id,
+        'name': name,
+        'surname': surname,
+        'gender': gender,
+        'birth_date': birth_date,
+        'birth_city': birth_city,
+        'birth_country': birth_country,
+        'eligibility': eligibility,
+        'country_claiming_eligibility': country_claiming_eligibility,
+        'photo_url': photo_url,
+        'marital_status': marital_status,
+        'city': city,
+        'address_line_1': address_line_1,
+        'district': district,
+        'country': country,
+        'education_level': education_level,
+    }
+    try:
+        users_manager.record_user_in_db(user_data)
+        await callback.message.answer('Данные успешно записаны в базу данных!')
+
+    except Exception as ex:
+        print(ex)
+        await callback.message.answer(f'произошла ошибка {ex}!')
+
+    finally:
+        await state.clear()
+
+
+    await callback.message.answer(
+        text="введите имя вашего супруга",
+    )
+    await state.set_state(SpouseState.name)
+
+
+@router.message(SpouseState.name)
+async def spouse_surname(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await message.answer(
+        text="укажите фамилию вашего супруга",
+    )
+    await state.set_state(SpouseState.surname)
+
+
+@router.message(SpouseState.surname)
+async def spouse_birth_data(message: Message, state: FSMContext):
+    await state.update_data(surname=message.text)
+    await message.answer(
+        text="укажите дату рождения вашего супруга",
+    )
+    await state.set_state(SpouseState.birth_date)
+
+
+@router.message(SpouseState.birth_date)
+async def spouse_gender(message: Message, state: FSMContext):
+    await state.update_data(birth_date=message.text)
+    await message.answer(
+        text="укажите пол вашего супруга",
+        reply_markup=get_gender_button()
+    )
+    await state.set_state(SpouseState.gender)
+
+
+@router.callback_query(SpouseState.gender)
+async def spouse_birth_city(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(gender=callback.data)
+
+    unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='город рождения не известен',
+        callback_data='spouse_unknowncity')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [unknowncity_btn],
+        ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+
+    await callback.message.answer(
+        text="укажите город рождения вашего супруга",
+        reply_markup=markup,
+    )
+    await state.set_state(SpouseState.birth_city)
+
+
+@router.message(SpouseState.birth_city)
+async def spouse_birth_country(message: Message, state: FSMContext):
+    await state.update_data(birth_city=message.text)
+    await message.answer(
+        text="укажите страну рождения вашего супруга",
+    )
+    await state.set_state(SpouseState.birth_country)
+
+
+@router.message(SpouseState.birth_country)
+async def spouse_photo(message: Message, state: FSMContext):
+    await state.update_data(birth_country=message.text)
+    await message.answer(
+        text="отправьте фотографию вашего супруга",
+    )
+    await state.set_state(SpouseState.upload_photo)
+
+
+@router.message(SpouseState.upload_photo)
+async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
+
+    telegram_user_id = message.from_user.id
+    unique_filename = str(uuid.uuid4())
+    filename = f"{unique_filename}.jpg"
+    user_directory = f"media/users/{telegram_user_id}/spouse/"
+    os.makedirs(user_directory, exist_ok=True)
+    photo_path = os.path.join(user_directory, filename)
+
+    await bot.download(
+        message.photo[-1],
+        destination=photo_path
+    )
+
+    await state.update_data(photo_url=photo_path)
+
+    await message.answer(
+        text="введите количество ваших детей",
+    )
+    await state.set_state(SpouseState.number_of_children)
+
+
+@router.message(SpouseState.number_of_children)
+async def spouse_number_of_children(message: Message, state: FSMContext):
+    await state.update_data(number_of_children=message.text)
+    # ТУТ НАДО ДОБАВИТЬ ЛОГИКУ ДЛЯ СОХРАНЕНИЯ ДАННЫХ В БАЗУ
+    if int(message.text) == 0:
+        await message.answer(
+            text="анкета заполнена!",
+        )
+        await state.clear()
+    else:
+        await message.answer(
+            text=f"количество ваших детей: {message.text}, вам нужно заполнить анкету на ваших детей."
+                 f"Введите имя вашего ребенка",
+        )
+        await state.clear()
+
+    await state.set_state(ChildState.name)
+
 
