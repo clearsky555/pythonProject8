@@ -10,7 +10,6 @@ from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_
 from state import UserState, SpouseState, ChildState
 from db.database import users_manager
 
-
 router = Router()
 
 
@@ -44,7 +43,6 @@ async def get_cancel(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'register')
 async def education_level(callback: CallbackQuery, state: FSMContext):
-
     await callback.message.answer(
         text="ваш наивысший уровень образования/highest level of education",
         reply_markup=get_level_education_button()
@@ -118,7 +116,7 @@ async def birth_city(message: Message, state: FSMContext):
         callback_data='unknowncity')
     keyboard: list[list[InlineKeyboardButton]] = [
         [unknowncity_btn],
-        ]
+    ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
 
@@ -152,7 +150,7 @@ async def eligibility(message: Message, state: FSMContext):
         callback_data='eligibility_no')
     keyboard: list[list[InlineKeyboardButton]] = [
         [yes_btn, no_btn],
-        ]
+    ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
     await message.answer(
@@ -193,7 +191,6 @@ async def ok(message: Message, state: FSMContext):
 
 @router.message(UserState.upload_photo)
 async def download_photo(message: Message, bot: Bot, state: FSMContext):
-
     telegram_user_id = message.from_user.id
     unique_filename = str(uuid.uuid4())
     filename = f"{unique_filename}.jpg"
@@ -246,7 +243,6 @@ async def district(message: Message, state: FSMContext):
 
 @router.message(UserState.country)
 async def child_and_spouse(message: Message, state: FSMContext):
-
     data = await state.get_data()
     marital_status = data['marital_status']
 
@@ -257,18 +253,18 @@ async def child_and_spouse(message: Message, state: FSMContext):
         callback_data='spouse_yes')
     no_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='добавить ребенка',
-        callback_data='child_yes')
+        callback_data='add_children')
     end_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='закончить заполнение анкеты',
         callback_data='end')
     if marital_status == 'Married and my spouse is NOT a U.S.citizen':
         keyboard: list[list[InlineKeyboardButton]] = [
             [yes_btn, no_btn, end_btn],
-            ]
+        ]
     else:
         keyboard: list[list[InlineKeyboardButton]] = [
             [no_btn, end_btn],
-            ]
+        ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
     await message.answer(
@@ -332,7 +328,6 @@ async def end(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'spouse_yes')
 async def spouse_name(callback: CallbackQuery, state: FSMContext):
-
     data = await state.get_data()
     users_manager.create_table()
     telegram_user_id = callback.message.from_user.id
@@ -383,7 +378,6 @@ async def spouse_name(callback: CallbackQuery, state: FSMContext):
     finally:
         await state.clear()
 
-
     await callback.message.answer(
         text="введите имя вашего супруга",
     )
@@ -427,7 +421,7 @@ async def spouse_birth_city(callback: CallbackQuery, state: FSMContext):
         callback_data='spouse_unknowncity')
     keyboard: list[list[InlineKeyboardButton]] = [
         [unknowncity_btn],
-        ]
+    ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
 
@@ -458,7 +452,6 @@ async def spouse_photo(message: Message, state: FSMContext):
 
 @router.message(SpouseState.upload_photo)
 async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
-
     telegram_user_id = message.from_user.id
     unique_filename = str(uuid.uuid4())
     filename = f"{unique_filename}.jpg"
@@ -473,28 +466,167 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
 
     await state.update_data(photo_url=photo_path)
 
+
+    unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='добавить в анкету сведения о детях',
+        callback_data='add_children')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [unknowncity_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+
     await message.answer(
-        text="введите количество ваших детей",
+        text='test',
+        reply_markup=markup,
     )
-    await state.set_state(SpouseState.number_of_children)
+    # await state.set_state(ChildState.number_of_children)
 
 
-@router.message(SpouseState.number_of_children)
-async def spouse_number_of_children(message: Message, state: FSMContext):
+@router.callback_query(F.data == 'add_children')
+async def common_number_of_children(callback: CallbackQuery, state: FSMContext):
+    await callback.message.answer(
+        text='введите количество ваших детей',
+    )
+    await state.set_state(ChildState.number_of_children)
+
+
+@router.message(ChildState.number_of_children)
+async def before_spouse_number_of_children(message: Message, state: FSMContext):
     await state.update_data(number_of_children=message.text)
-    # ТУТ НАДО ДОБАВИТЬ ЛОГИКУ ДЛЯ СОХРАНЕНИЯ ДАННЫХ В БАЗУ
     if int(message.text) == 0:
         await message.answer(
             text="анкета заполнена!",
         )
         await state.clear()
     else:
+        unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+            text='продолжить заполнять анкету на детей',
+            callback_data='next_child')
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [unknowncity_btn],
+        ]
+        markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+            inline_keyboard=keyboard)
         await message.answer(
-            text=f"количество ваших детей: {message.text}, вам нужно заполнить анкету на ваших детей."
-                 f"Введите имя вашего ребенка",
+            text=f"количество ваших детей: {message.text}, вам нужно заполнить анкету на ваших детей.",
+            reply_markup=markup
         )
-        await state.clear()
+
+
+@router.callback_query(F.data == 'next_child')
+async def spouse_number_of_children(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+
+    print(data)
+    # ТУТ НАДО ДОБАВИТЬ ЛОГИКУ ДЛЯ СОХРАНЕНИЯ ДАННЫХ В БАЗУ
+    await callback.message.answer(
+        text=f"введите имя вашего ребенка",
+    )
 
     await state.set_state(ChildState.name)
 
 
+@router.message(ChildState.name)
+async def child_surname(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+
+    await message.answer(
+        text='введите фамилию вашего ребенка'
+    )
+    await state.set_state(ChildState.surname)
+
+
+@router.message(ChildState.surname)
+async def child_birthdate(message: Message, state: FSMContext):
+    await state.update_data(surname=message.text)
+    await message.answer(
+        text="укажите дату рождения вашего ребенка",
+    )
+    await state.set_state(ChildState.birth_date)
+
+
+@router.message(ChildState.birth_date)
+async def child_gender(message: Message, state: FSMContext):
+    await state.update_data(birth_date=message.text)
+    await message.answer(
+        text="укажите пол вашего ребенка",
+        reply_markup=get_gender_button()
+    )
+    await state.set_state(ChildState.gender)
+
+
+@router.callback_query(ChildState.gender)
+async def child_birth_city(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(gender=callback.data)
+
+    unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='город рождения не известен',
+        callback_data='child_unknowncity')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [unknowncity_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+
+    await callback.message.answer(
+        text="укажите город рождения вашего ребенка",
+        reply_markup=markup,
+    )
+    await state.set_state(ChildState.birth_city)
+
+
+@router.message(ChildState.birth_city)
+async def spouse_birth_country(message: Message, state: FSMContext):
+    await state.update_data(birth_city=message.text)
+    await message.answer(
+        text="укажите страну рождения вашего ребенка",
+    )
+    await state.set_state(ChildState.birth_country)
+
+
+@router.message(ChildState.birth_country)
+async def spouse_photo(message: Message, state: FSMContext):
+    await state.update_data(birth_country=message.text)
+    await message.answer(
+        text="отправьте фотографию вашего ребенка",
+    )
+    await state.set_state(ChildState.upload_photo)
+
+
+@router.message(ChildState.upload_photo)
+async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
+    telegram_user_id = message.from_user.id
+    unique_filename = str(uuid.uuid4())
+    filename = f"{unique_filename}.jpg"
+    user_directory = f"media/users/{telegram_user_id}/child/"
+    os.makedirs(user_directory, exist_ok=True)
+    photo_path = os.path.join(user_directory, filename)
+
+    await bot.download(
+        message.photo[-1],
+        destination=photo_path
+    )
+
+    await state.update_data(photo_url=photo_path)
+    # ОТНИМАЕМ ОТ number_of_children ОДИН, ПОТОМ СОХРАНЯЕМ number_of_children, И ПЕРЕДАЁМ ЗНАЧЕНИЕ В ФУНКЦИЮ
+
+    data = await state.get_data()
+    number_of_children = data['number_of_children']
+    remaining_number_of_children = int(number_of_children) - 1
+
+    unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='продолжить заполнять анкету на детей',
+        callback_data='next_child')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [unknowncity_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+
+    await message.answer(
+        text=f"количество анкет на детей, которое вам осталось заполнить: {remaining_number_of_children}",
+        reply_markup=markup
+    )
+
+    await state.update_data(number_of_children=remaining_number_of_children)

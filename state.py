@@ -27,8 +27,15 @@ class SpouseState(StatesGroup):
     birth_city = State()
     birth_country = State()
     upload_photo = State()
-    number_of_children = State()
 
 
 class ChildState(StatesGroup):
     name = State()
+    surname = State()
+    birth_date = State()
+    gender = State()
+    birth_city = State()
+    birth_country = State()
+    upload_photo = State()
+    number_of_children = State()
+    remaining_number_of_children = State()
