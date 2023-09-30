@@ -274,6 +274,57 @@ async def child_and_spouse(message: Message, state: FSMContext):
 
     await state.update_data(country=message.text)
 
+    # data = await state.get_data()
+    users_manager.create_table()
+    telegram_user_id = message.from_user.id
+    education_level = data['education_level']
+    marital_status = data['marital_status']
+    name = data['name']
+    surname = data['surname']
+    gender = data['gender']
+    birth_date = data['birth_date']
+    birth_city = data['birth_city']
+    birth_country = data['birth_country']
+    eligibility = data['eligibility']
+    try:
+        country_claiming_eligibility = data['country_claiming_eligibility']
+    except KeyError:
+        country_claiming_eligibility = None
+    photo_url = data['photo_url']
+    address_line_1 = data['address_line_1']
+    city = data['city']
+    district = data['district']
+    country = message.text
+    user_data = {
+        'telegram_user_id': telegram_user_id,
+        'name': name,
+        'surname': surname,
+        'gender': gender,
+        'birth_date': birth_date,
+        'birth_city': birth_city,
+        'birth_country': birth_country,
+        'eligibility': eligibility,
+        'country_claiming_eligibility': country_claiming_eligibility,
+        'photo_url': photo_url,
+        'marital_status': marital_status,
+        'city': city,
+        'address_line_1': address_line_1,
+        'district': district,
+        'country': country,
+        'education_level': education_level,
+    }
+    try:
+        users_manager.record_user_in_db(user_data)
+        await message.answer('Данные успешно записаны в базу данных!')
+
+    except Exception as ex:
+        print(ex)
+        await message.answer(f'произошла ошибка {ex}!')
+
+    finally:
+        await state.clear()
+
+
     yes_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='добавить супруга',
         callback_data='spouse_yes')
@@ -282,7 +333,7 @@ async def child_and_spouse(message: Message, state: FSMContext):
         callback_data='add_children')
     end_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='закончить заполнение анкеты',
-        callback_data='end')
+        callback_data='payment')
     if marital_status == 'Married and my spouse is NOT a U.S.citizen':
         keyboard: list[list[InlineKeyboardButton]] = [
             [yes_btn, no_btn, end_btn],
@@ -299,110 +350,61 @@ async def child_and_spouse(message: Message, state: FSMContext):
     )
 
 
-@router.callback_query(F.data == 'end')
-async def end(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    users_manager.create_table()
-    telegram_user_id = callback.from_user.id
-    education_level = data['education_level']
-    marital_status = data['marital_status']
-    name = data['name']
-    surname = data['surname']
-    gender = data['gender']
-    birth_date = data['birth_date']
-    birth_city = data['birth_city']
-    birth_country = data['birth_country']
-    eligibility = data['eligibility']
-    try:
-        country_claiming_eligibility = data['country_claiming_eligibility']
-    except KeyError:
-        country_claiming_eligibility = None
-    photo_url = data['photo_url']
-    address_line_1 = data['address_line_1']
-    city = data['city']
-    district = data['district']
-    country = data['country']
-    user_data = {
-        'telegram_user_id': telegram_user_id,
-        'name': name,
-        'surname': surname,
-        'gender': gender,
-        'birth_date': birth_date,
-        'birth_city': birth_city,
-        'birth_country': birth_country,
-        'eligibility': eligibility,
-        'country_claiming_eligibility': country_claiming_eligibility,
-        'photo_url': photo_url,
-        'marital_status': marital_status,
-        'city': city,
-        'address_line_1': address_line_1,
-        'district': district,
-        'country': country,
-        'education_level': education_level,
-    }
-    try:
-        users_manager.record_user_in_db(user_data)
-        await callback.message.answer('Данные успешно записаны в базу данных!')
-
-    except Exception as ex:
-        print(ex)
-        await callback.message.answer(f'произошла ошибка {ex}!')
-
-    finally:
-        await state.clear()
+# @router.callback_query(F.data == 'end')
+# async def end(callback: CallbackQuery, state: FSMContext):
+#     data = await state.get_data()
+#     users_manager.create_table()
+#     telegram_user_id = callback.from_user.id
+#     education_level = data['education_level']
+#     marital_status = data['marital_status']
+#     name = data['name']
+#     surname = data['surname']
+#     gender = data['gender']
+#     birth_date = data['birth_date']
+#     birth_city = data['birth_city']
+#     birth_country = data['birth_country']
+#     eligibility = data['eligibility']
+#     try:
+#         country_claiming_eligibility = data['country_claiming_eligibility']
+#     except KeyError:
+#         country_claiming_eligibility = None
+#     photo_url = data['photo_url']
+#     address_line_1 = data['address_line_1']
+#     city = data['city']
+#     district = data['district']
+#     country = data['country']
+#     user_data = {
+#         'telegram_user_id': telegram_user_id,
+#         'name': name,
+#         'surname': surname,
+#         'gender': gender,
+#         'birth_date': birth_date,
+#         'birth_city': birth_city,
+#         'birth_country': birth_country,
+#         'eligibility': eligibility,
+#         'country_claiming_eligibility': country_claiming_eligibility,
+#         'photo_url': photo_url,
+#         'marital_status': marital_status,
+#         'city': city,
+#         'address_line_1': address_line_1,
+#         'district': district,
+#         'country': country,
+#         'education_level': education_level,
+#     }
+#     try:
+#         users_manager.record_user_in_db(user_data)
+#         await callback.message.answer('Данные успешно записаны в базу данных!')
+#
+#     except Exception as ex:
+#         print(ex)
+#         await callback.message.answer(f'произошла ошибка {ex}!')
+#
+#     finally:
+#         await state.clear()
 
 
 @router.callback_query(F.data == 'spouse_yes')
 async def spouse_name(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    users_manager.create_table()
-    telegram_user_id = callback.from_user.id
-    education_level = data['education_level']
-    marital_status = data['marital_status']
-    name = data['name']
-    surname = data['surname']
-    gender = data['gender']
-    birth_date = data['birth_date']
-    birth_city = data['birth_city']
-    birth_country = data['birth_country']
-    eligibility = data['eligibility']
-    try:
-        country_claiming_eligibility = data['country_claiming_eligibility']
-    except KeyError:
-        country_claiming_eligibility = None
-    photo_url = data['photo_url']
-    address_line_1 = data['address_line_1']
-    city = data['city']
-    district = data['district']
-    country = data['country']
-    user_data = {
-        'telegram_user_id': telegram_user_id,
-        'name': name,
-        'surname': surname,
-        'gender': gender,
-        'birth_date': birth_date,
-        'birth_city': birth_city,
-        'birth_country': birth_country,
-        'eligibility': eligibility,
-        'country_claiming_eligibility': country_claiming_eligibility,
-        'photo_url': photo_url,
-        'marital_status': marital_status,
-        'city': city,
-        'address_line_1': address_line_1,
-        'district': district,
-        'country': country,
-        'education_level': education_level,
-    }
-    try:
-        users_manager.record_user_in_db(user_data)
-        await callback.message.answer('Данные успешно записаны в базу данных!')
-
-    except Exception as ex:
-        print(ex)
-        await callback.message.answer(f'произошла ошибка {ex}!')
-
-    finally:
-        await state.clear()
 
     await callback.message.answer(
         text="введите имя вашего супруга",
@@ -543,8 +545,19 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
 
 @router.callback_query(F.data == 'add_children')
 async def common_number_of_children(callback: CallbackQuery, state: FSMContext):
+
+    nochild_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='если у вас нет детей, нажмите сюда (завершить заполнение анкеты)',
+        callback_data='payment')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [nochild_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+
     await callback.message.answer(
         text='введите количество ваших детей',
+        reply_markup=markup
     )
     await state.set_state(ChildState.number_of_children)
 
@@ -673,12 +686,22 @@ async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
     number_of_children = data['number_of_children']
     remaining_number_of_children = int(number_of_children) - 1
 
-    unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
-        text='продолжить заполнять анкету на детей',
-        callback_data='next_child')
-    keyboard: list[list[InlineKeyboardButton]] = [
-        [unknowncity_btn],
-    ]
+    if remaining_number_of_children == 0:
+        child_ok_btn: InlineKeyboardButton = InlineKeyboardButton(
+            text='завершить заполнение анкеты',
+            callback_data='payment')
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [child_ok_btn],
+        ]
+
+
+    else:
+        unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
+            text='продолжить заполнять анкету на детей',
+            callback_data='next_child')
+        keyboard: list[list[InlineKeyboardButton]] = [
+            [unknowncity_btn],
+        ]
     markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
         inline_keyboard=keyboard)
 
@@ -688,3 +711,22 @@ async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
     )
 
     await state.update_data(number_of_children=remaining_number_of_children)
+
+
+@router.callback_query(F.data == 'payment')
+async def payment(callback: CallbackQuery):
+
+    text = ('Вы заполнили анкету для участия в green card 2023! После оплаты вы сможете посмотреть вашу анкету и'
+            ' отредактировать её при необходимости!')
+    payment_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='оплата',
+        callback_data='payment_done')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [payment_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+    await callback.message.answer(
+        text,
+        reply_markup=markup
+    )
