@@ -7,6 +7,9 @@ from sqlalchemy import (
     String,
     BigInteger,
     Date,
+    ForeignKey,
+    select,
+    text,
 )
 
 from config import MYSQL_URL
@@ -56,5 +59,51 @@ class UsersManager:
             connect.execute(ins)
             connect.commit()
 
+    def get_user_id_by_telegram_user_id(self, telegram_user_id):
+        query = select(self.user.columns.id).where(self.user.columns.telegram_user_id == telegram_user_id)
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_id = result.scalar()
+        return user_id
+
 
 users_manager = UsersManager(engine=engine)
+
+
+class SpouseManager:
+    def __init__(self, engine) -> None:
+        self.engine = engine
+        self.spouse = self.get_spouse_schema()
+
+    def get_spouse_schema(self):
+        spouses = Table(
+            'spouses', meta,
+            Column('id', Integer, primary_key=True),
+            Column('telegram_user_id', BigInteger),
+            Column('name', String(100)),
+            Column('surname', String(100)),
+            Column('gender', String(50)),
+            Column('birth_date', Date),
+            Column('birth_city', String(100)),
+            Column('birth_country', String(100)),
+            Column('photo_url', String(255)),
+            Column('user_id', Integer, ForeignKey('users.id')),
+
+            extend_existing=True
+        )
+        return spouses
+
+    def create_table(self):
+        meta.create_all(self.engine, checkfirst=True)
+
+    def record_spouse_in_db(self, data):
+        ins = self.spouse.insert().values(
+            **data
+        )
+        with self.engine.connect() as connect:
+            connect.execute(ins)
+            connect.commit()
+
+
+spouse_manager = SpouseManager(engine=engine)

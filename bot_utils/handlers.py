@@ -1,14 +1,14 @@
 import os
 import uuid
 
-from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, FSInputFile
 from aiogram import Router, F, Bot
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
 from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button
 from state import UserState, SpouseState, ChildState
-from db.database import users_manager
+from db.database import users_manager, spouse_manager
 
 router = Router()
 
@@ -184,8 +184,34 @@ async def write_eligibility_no(message: Message, state: FSMContext):
 
 async def ok(message: Message, state: FSMContext):
     await message.answer(
-        text="отправьте вашу фотографию",
+        text="""
+Пожалуйста, отправьте вашу фотографию.
+Основные требования к фото для Грин Карты:
+    1) Фотография должна быть цветной и чёткой
+    2) На снимке не должен быть искажен цвет кожи
+    3) Фон за человеком должен быть светлый
+    4) Не должно быть тени на фоне
+    5) Голова должна быть в центре снимка
+    6) Голова на снимке должна занимать 50-69% от высоты фото
+    7) Глаза на фото должны быть открыты, очки не допускаются
+    8) Взгляд фотографируемого нейтральный
+    9) Одежда должна быть повседневной, недопустимо фотографироваться в форме
+    10) Нельзя фотографироваться в головных уборах закрывающих волосы
+    11) Фото должно быть не старше 6 месяцев
+        """,
     )
+
+    image_from_pc = FSInputFile(path=r'/home/clear/PycharmProjects/pythonProject8/media/samples/wrong.jpg')
+    await message.answer_photo(
+        photo=image_from_pc,
+        caption='примеры неправильных фото',
+    )
+    image_from_pc_2 = FSInputFile(path=r'/home/clear/PycharmProjects/pythonProject8/media/samples/right.png')
+    await message.answer_photo(
+        photo=image_from_pc_2,
+        caption='пример правильного фото'
+    )
+
     await state.set_state(UserState.upload_photo)
 
 
@@ -277,7 +303,7 @@ async def child_and_spouse(message: Message, state: FSMContext):
 async def end(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     users_manager.create_table()
-    telegram_user_id = callback.message.from_user.id
+    telegram_user_id = callback.from_user.id
     education_level = data['education_level']
     marital_status = data['marital_status']
     name = data['name']
@@ -330,7 +356,7 @@ async def end(callback: CallbackQuery, state: FSMContext):
 async def spouse_name(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     users_manager.create_table()
-    telegram_user_id = callback.message.from_user.id
+    telegram_user_id = callback.from_user.id
     education_level = data['education_level']
     marital_status = data['marital_status']
     name = data['name']
@@ -466,6 +492,38 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
 
     await state.update_data(photo_url=photo_path)
 
+    data = await state.get_data()
+    spouse_manager.create_table()
+    name = data['name']
+    surname = data['surname']
+    gender = data['gender']
+    birth_date = data['birth_date']
+    birth_city = data['birth_city']
+    birth_country = data['birth_country']
+    photo_url = data['photo_url']
+    user_id = users_manager.get_user_id_by_telegram_user_id(telegram_user_id)
+    print(user_id)
+    spouse_data = {
+        'telegram_user_id': telegram_user_id,
+        'name': name,
+        'surname': surname,
+        'gender': gender,
+        'birth_date': birth_date,
+        'birth_city': birth_city,
+        'birth_country': birth_country,
+        'photo_url': photo_url,
+        'user_id': user_id,
+    }
+    try:
+        spouse_manager.record_spouse_in_db(spouse_data)
+        await message.answer('Данные о супруге успешно записаны в базу данных!')
+
+    except Exception as ex:
+        print(ex)
+        await message.answer(f'произошла ошибка {ex}!')
+
+    finally:
+        await state.clear()
 
     unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='добавить в анкету сведения о детях',
