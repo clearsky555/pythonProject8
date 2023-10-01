@@ -76,6 +76,17 @@ class UsersManager:
         return user_data._mapping
 
 
+    # ФУНКЦИИ ДЛЯ ИЗМЕНЕНИЯ ДАННЫХ АНКЕТЫ
+    def write_name_by_telegram_id(self, telegram_user_id, new_name):
+
+        update_stmt = self.user.update().values(name=new_name).where(
+            self.user.c.telegram_user_id == telegram_user_id)
+
+        with self.engine.connect() as connect:
+            connect.execute(update_stmt)
+            connect.commit()
+
+
 users_manager = UsersManager(engine=engine)
 
 

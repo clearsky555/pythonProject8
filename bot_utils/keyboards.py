@@ -50,3 +50,23 @@ def get_gender_button():
     builder.button(text='женский', callback_data='female')
     builder.adjust(1)
     return builder.as_markup()
+
+
+def get_user_edit_button():
+    builder = InlineKeyboardBuilder()
+    builder.button(text='имя', callback_data='user_name_edit')
+    builder.button(text='фамилия', callback_data='2')
+    builder.button(text='пол', callback_data='3')
+    builder.button(text='образование', callback_data='4')
+    builder.button(text='семейный статус', callback_data='5')
+    builder.button(text='дата рождения', callback_data='6')
+    builder.button(text='город рождения', callback_data='7')
+    builder.button(text='страна рождения', callback_data='8')
+    builder.button(text='допуск страны рождения в участии', callback_data='9')
+    builder.button(text='country_claiming_eligibility', callback_data='10')
+    builder.button(text='адрес', callback_data='11')
+    builder.button(text='город', callback_data='12')
+    builder.button(text='район', callback_data='13')
+    builder.button(text='страна', callback_data='14')
+    builder.adjust(3)
+    return builder.as_markup()

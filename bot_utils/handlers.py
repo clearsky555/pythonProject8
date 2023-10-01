@@ -6,8 +6,8 @@ from aiogram import Router, F, Bot
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button
-from state import UserState, SpouseState, ChildState
+from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button, get_user_edit_button
+from state import UserState, SpouseState, ChildState, UserEditState
 from db.database import users_manager, spouse_manager
 
 router = Router()
@@ -763,4 +763,43 @@ async def editing_data(callback: CallbackQuery):
     await callback.message.answer_photo(
         photo=photo,
         caption='ваше фото',
+    )
+    await callback.message.answer(
+        text='если в анкете есть неточности, нажмите на одну из соответствующих кнопок',
+        reply_markup=get_user_edit_button()
+    )
+
+
+@router.callback_query(F.data == 'user_name_edit')
+async def user_name_edit(callback: CallbackQuery, state: FSMContext):
+    telegram_user_id = callback.from_user.id
+    await callback.message.answer(
+        text="введите исправленное имя",
+    )
+
+    await state.set_state(UserEditState.name)
+
+
+@router.message(UserEditState.name)
+async def user_name_write(message: Message, state: FSMContext):
+    telegram_user_id = message.from_user.id
+    print(telegram_user_id)
+    data = users_manager.get_user_by_telegram_id(telegram_user_id)
+    print(data)
+    print(message.text)
+    name = message.text
+    users_manager.write_name_by_telegram_id(telegram_user_id, name)
+
+    text = ('имя исправлено!')
+    payment_btn: InlineKeyboardButton = InlineKeyboardButton(
+        text='вернуться к анкете',
+        callback_data='payment_done')
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [payment_btn],
+    ]
+    markup: InlineKeyboardMarkup = InlineKeyboardMarkup(
+        inline_keyboard=keyboard)
+    await message.answer(
+        text,
+        reply_markup=markup
     )

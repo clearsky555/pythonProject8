@@ -39,3 +39,7 @@ class ChildState(StatesGroup):
     upload_photo = State()
     number_of_children = State()
     remaining_number_of_children = State()
+
+
+class UserEditState(StatesGroup):
+    name = State()
