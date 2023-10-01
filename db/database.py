@@ -67,6 +67,14 @@ class UsersManager:
             user_id = result.scalar()
         return user_id
 
+    def get_user_by_telegram_id(self, telegram_user_id):
+        query = select(self.user).where(self.user.c.telegram_user_id == telegram_user_id).order_by(self.user.c.id.desc())
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_data = result.fetchone()
+        return user_data._mapping
+
 
 users_manager = UsersManager(engine=engine)
 

@@ -730,3 +730,37 @@ async def payment(callback: CallbackQuery):
         text,
         reply_markup=markup
     )
+
+
+@router.callback_query(F.data == 'payment_done')
+async def editing_data(callback: CallbackQuery):
+    telegram_user_id = callback.from_user.id
+    data = users_manager.get_user_by_telegram_id(telegram_user_id)
+    print(data)
+    photo_url = data['photo_url']
+
+    await callback.message.answer(
+        text=f'''
+Пожалуйста, проверьте правильность заполнения вашей анкеты
+имя = {data['name']}
+фамилия = {data['surname']}
+пол = {data['gender']}
+уровень образования = {data['education_level']}
+семейный статус = {data['marital_status']}
+день рождения = {data['birth_date']}
+город рождения = {data['birth_city']}
+страна рождения = {data['birth_country']}
+допущена ли страна до участия в green card = {data['eligibility']}
+выбранная страна если нет допуска = {data['country_claiming_eligibility']}
+адрес = {data['address_line_1']}
+город = {data['city']}
+район = {data['district']}
+страна = {data['country']}
+        '''
+    )
+
+    photo = FSInputFile(path=photo_url)
+    await callback.message.answer_photo(
+        photo=photo,
+        caption='ваше фото',
+    )
