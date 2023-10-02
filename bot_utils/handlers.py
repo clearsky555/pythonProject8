@@ -528,7 +528,7 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
         await state.clear()
 
     unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
-        text='добавить в анкету сведения о детях',
+        text='продолжить заполнение',
         callback_data='add_children')
     keyboard: list[list[InlineKeyboardButton]] = [
         [unknowncity_btn],
@@ -537,7 +537,7 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
         inline_keyboard=keyboard)
 
     await message.answer(
-        text='test',
+        text='чтобы продолжить заполнять анкету, вам нужно добавить сведения о детях',
         reply_markup=markup,
     )
     # await state.set_state(ChildState.number_of_children)
@@ -769,6 +769,29 @@ async def editing_data(callback: CallbackQuery):
         reply_markup=get_user_edit_button()
     )
 
+    if data['marital_status'] == 'Married and my spouse is NOT a U.S.citizen':
+        spouse_data = spouse_manager.get_spouse_by_telegram_id(telegram_user_id)
+
+        await callback.message.answer(
+            text=f'''
+        Пожалуйста, проверьте правильность заполнения анкеты вашего супруга
+        имя = {spouse_data['name']}
+        фамилия = {spouse_data['surname']}
+        пол = {spouse_data['gender']}
+        день рождения = {spouse_data['birth_date']}
+        город рождения = {spouse_data['birth_city']}
+        страна рождения = {spouse_data['birth_country']}
+                '''
+        )
+
+        spouse_photo_url = spouse_data['photo_url']
+
+        photo = FSInputFile(path=spouse_photo_url)
+
+        await callback.message.answer_photo(
+            photo=photo,
+            caption='фото вашего супруга',
+        )
 
 @router.callback_query(F.data == 'user_name_edit')
 async def user_name_edit(callback: CallbackQuery, state: FSMContext):
@@ -803,3 +826,7 @@ async def user_name_write(message: Message, state: FSMContext):
         text,
         reply_markup=markup
     )
+
+# @dp.message(F.contact)
+# async def func_contact(msg: Message):
+#     await msg.answer(f'Контакт:{msg.contact.phone_number}')

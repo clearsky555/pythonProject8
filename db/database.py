@@ -124,5 +124,13 @@ class SpouseManager:
             connect.execute(ins)
             connect.commit()
 
+    def get_spouse_by_telegram_id(self, telegram_user_id):
+        query = select(self.spouse).where(self.spouse.c.telegram_user_id == telegram_user_id).order_by(self.spouse.c.id.desc())
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_data = result.fetchone()
+        return user_data._mapping
+
 
 spouse_manager = SpouseManager(engine=engine)
