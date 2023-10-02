@@ -134,3 +134,51 @@ class SpouseManager:
 
 
 spouse_manager = SpouseManager(engine=engine)
+
+
+class ChildManager:
+    def __init__(self, engine) -> None:
+        self.engine = engine
+        self.child = self.get_child_schema()
+
+    def get_child_schema(self):
+        spouses = Table(
+            'children', meta,
+            Column('id', Integer, primary_key=True),
+            Column('telegram_user_id', BigInteger),
+            Column('name', String(100)),
+            Column('surname', String(100)),
+            Column('gender', String(50)),
+            Column('birth_date', Date),
+            Column('birth_city', String(100)),
+            Column('birth_country', String(100)),
+            Column('photo_url', String(255)),
+            Column('user_id', Integer, ForeignKey('users.id')),
+
+            extend_existing=True
+        )
+        return spouses
+
+    def create_table(self):
+        meta.create_all(self.engine, checkfirst=True)
+
+    def record_child_in_db(self, data):
+        ins = self.child.insert().values(
+            **data
+        )
+        with self.engine.connect() as connect:
+            connect.execute(ins)
+            connect.commit()
+
+    def get_children_by_telegram_id(self, telegram_user_id):
+        query = select(self.child).where(self.child.c.telegram_user_id == telegram_user_id).order_by(
+            self.child.c.id.desc())
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_data = result.fetchall()  # Используйте fetchall(), чтобы получить все строки с данными
+        return [user._mapping for user in
+                user_data]  # Преобразуйте результат в список словарей или нужный вам формат данных
+
+
+child_manager = ChildManager(engine=engine)

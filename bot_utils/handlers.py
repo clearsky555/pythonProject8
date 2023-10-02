@@ -8,7 +8,7 @@ from aiogram.fsm.context import FSMContext
 
 from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button, get_user_edit_button
 from state import UserState, SpouseState, ChildState, UserEditState
-from db.database import users_manager, spouse_manager
+from db.database import users_manager, spouse_manager, child_manager
 
 router = Router()
 
@@ -680,6 +680,39 @@ async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
     )
 
     await state.update_data(photo_url=photo_path)
+
+    # ЛОГИКА СОХРАНЕНИЯ ДАННЫХ О ДЕТЯХ В БАЗУ ДАННЫХ
+    data = await state.get_data()
+    child_manager.create_table()
+    name = data['name']
+    surname = data['surname']
+    gender = data['gender']
+    birth_date = data['birth_date']
+    birth_city = data['birth_city']
+    birth_country = data['birth_country']
+    photo_url = data['photo_url']
+    user_id = users_manager.get_user_id_by_telegram_user_id(telegram_user_id)
+    print(user_id)
+    child_data = {
+        'telegram_user_id': telegram_user_id,
+        'name': name,
+        'surname': surname,
+        'gender': gender,
+        'birth_date': birth_date,
+        'birth_city': birth_city,
+        'birth_country': birth_country,
+        'photo_url': photo_url,
+        'user_id': user_id,
+    }
+    try:
+        child_manager.record_child_in_db(child_data)
+        await message.answer('Данные о ребенке успешно записаны в базу данных!')
+
+    except Exception as ex:
+        print(ex)
+        await message.answer(f'произошла ошибка {ex}!')
+
+
     # ОТНИМАЕМ ОТ number_of_children ОДИН, ПОТОМ СОХРАНЯЕМ number_of_children, И ПЕРЕДАЁМ ЗНАЧЕНИЕ В ФУНКЦИЮ
 
     data = await state.get_data()
@@ -793,9 +826,30 @@ async def editing_data(callback: CallbackQuery):
             caption='фото вашего супруга',
         )
 
+    child_data = child_manager.get_children_by_telegram_id(telegram_user_id)
+    if child_data != []:
+        for data in child_data:
+            child_photo_url = data['photo_url']
+
+            photo = FSInputFile(path=child_photo_url)
+            await callback.message.answer(
+                text=f'''
+            Пожалуйста, проверьте правильность заполнения анкеты вашего ребенка
+        имя = {data['name']}
+        фамилия = {data['surname']}
+        пол = {data['gender']}
+        день рождения = {data['birth_date']}
+        город рождения = {data['birth_city']}
+        страна рождения = {data['birth_country']}
+                    '''
+            )
+            await callback.message.answer_photo(
+                photo=photo,
+                caption='фото вашего ребенка',
+            )
+
 @router.callback_query(F.data == 'user_name_edit')
 async def user_name_edit(callback: CallbackQuery, state: FSMContext):
-    telegram_user_id = callback.from_user.id
     await callback.message.answer(
         text="введите исправленное имя",
     )
