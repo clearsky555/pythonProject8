@@ -9,6 +9,7 @@ from aiogram.fsm.context import FSMContext
 from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button, get_user_edit_button
 from state import UserState, SpouseState, ChildState, UserEditState
 from db.database import users_manager, spouse_manager, child_manager
+from bot_utils.utils import is_valid_date
 
 router = Router()
 
@@ -105,7 +106,7 @@ async def birth_date(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserState.birth_date)
 
 
-@router.message(UserState.birth_date)
+@router.message(UserState.birth_date, lambda message: is_valid_date(message.text))
 async def birth_city(message: Message, state: FSMContext):
     print(message.text)
 
@@ -125,6 +126,13 @@ async def birth_city(message: Message, state: FSMContext):
         reply_markup=markup,
     )
     await state.set_state(UserState.birth_city)
+
+
+@router.message(UserState.birth_date)
+async def wrong_date(message: Message):
+    await message.answer(
+        text="Вы неправильно ввели дату. Укажите вашу дату рождения в формате ГГГГ.ММ.ЧЧ, например - 2001.12.19(birth_date)",
+    )
 
 
 @router.message(UserState.birth_city)
@@ -430,7 +438,7 @@ async def spouse_birth_data(message: Message, state: FSMContext):
     await state.set_state(SpouseState.birth_date)
 
 
-@router.message(SpouseState.birth_date)
+@router.message(SpouseState.birth_date, lambda message: is_valid_date(message.text))
 async def spouse_gender(message: Message, state: FSMContext):
     await state.update_data(birth_date=message.text)
     await message.answer(
@@ -438,6 +446,13 @@ async def spouse_gender(message: Message, state: FSMContext):
         reply_markup=get_gender_button()
     )
     await state.set_state(SpouseState.gender)
+
+
+@router.message(SpouseState.birth_date)
+async def wrong_date(message: Message):
+    await message.answer(
+        text="Вы неправильно ввели дату. Укажите дату рождения в формате ГГГГ.ММ.ЧЧ, например - 2001.12.19(birth_date)",
+    )
 
 
 @router.callback_query(SpouseState.gender)
@@ -617,7 +632,7 @@ async def child_birthdate(message: Message, state: FSMContext):
     await state.set_state(ChildState.birth_date)
 
 
-@router.message(ChildState.birth_date)
+@router.message(ChildState.birth_date, lambda message: is_valid_date(message.text))
 async def child_gender(message: Message, state: FSMContext):
     await state.update_data(birth_date=message.text)
     await message.answer(
@@ -625,6 +640,13 @@ async def child_gender(message: Message, state: FSMContext):
         reply_markup=get_gender_button()
     )
     await state.set_state(ChildState.gender)
+
+
+@router.message(ChildState.birth_date)
+async def wrong_date(message: Message):
+    await message.answer(
+        text="Вы неправильно ввели дату. Укажите дату рождения в формате ГГГГ.ММ.ЧЧ, например - 2001.12.19(birth_date)",
+    )
 
 
 @router.callback_query(ChildState.gender)
