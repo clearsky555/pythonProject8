@@ -590,18 +590,22 @@ async def before_spouse_number_of_children(message: Message, state: FSMContext):
 @router.callback_query(F.data == 'next_child')
 async def spouse_number_of_children(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-
     print(data)
-    # ТУТ НАДО ДОБАВИТЬ ЛОГИКУ ДЛЯ СОХРАНЕНИЯ ДАННЫХ В БАЗУ
     await callback.message.answer(
         text=f"введите имя вашего ребенка",
     )
-
     await state.set_state(ChildState.name)
 
 
 @router.message(ChildState.name)
 async def child_surname(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'user_id': user_id,
+        'name': message.text,
+        'telegram_user_id': message.from_user.id,
+    }
+    child_manager.record_child_in_db(data)
     await state.update_data(name=message.text)
 
     await message.answer(
@@ -612,6 +616,15 @@ async def child_surname(message: Message, state: FSMContext):
 
 @router.message(ChildState.surname)
 async def child_birthdate(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    print(user_id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    print(child_id)
+    data = {
+        'surname': message.text,
+    }
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
+
     await state.update_data(surname=message.text)
     await message.answer(
         text="укажите дату рождения вашего ребенка",
@@ -621,6 +634,12 @@ async def child_birthdate(message: Message, state: FSMContext):
 
 @router.message(ChildState.birth_date, lambda message: is_valid_date(message.text))
 async def child_gender(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    data = {
+        'birth_date': message.text,
+    }
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
     await state.update_data(birth_date=message.text)
     await message.answer(
         text="укажите пол вашего ребенка",
@@ -638,6 +657,12 @@ async def wrong_date(message: Message):
 
 @router.callback_query(ChildState.gender)
 async def child_birth_city(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    data = {
+        'gender': callback.data,
+    }
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
     await state.update_data(gender=callback.data)
 
     unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
@@ -658,6 +683,12 @@ async def child_birth_city(callback: CallbackQuery, state: FSMContext):
 
 @router.message(ChildState.birth_city)
 async def spouse_birth_country(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    data = {
+        'birth_city': message.text,
+    }
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
     await state.update_data(birth_city=message.text)
     await message.answer(
         text="укажите страну рождения вашего ребенка",
@@ -667,6 +698,12 @@ async def spouse_birth_country(message: Message, state: FSMContext):
 
 @router.message(ChildState.birth_country)
 async def spouse_photo(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    data = {
+        'birth_country': message.text,
+    }
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
     await state.update_data(birth_country=message.text)
     await message.answer(
         text="отправьте фотографию вашего ребенка",
@@ -687,40 +724,13 @@ async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
         message.photo[-1],
         destination=photo_path
     )
-
-    await state.update_data(photo_url=photo_path)
-
-    # ЛОГИКА СОХРАНЕНИЯ ДАННЫХ О ДЕТЯХ В БАЗУ ДАННЫХ
-    data = await state.get_data()
-    child_manager.create_table()
-    name = data['name']
-    surname = data['surname']
-    gender = data['gender']
-    birth_date = data['birth_date']
-    birth_city = data['birth_city']
-    birth_country = data['birth_country']
-    photo_url = data['photo_url']
-    user_id = users_manager.get_user_id_by_telegram_user_id(telegram_user_id)
-    print(user_id)
-    child_data = {
-        'telegram_user_id': telegram_user_id,
-        'name': name,
-        'surname': surname,
-        'gender': gender,
-        'birth_date': birth_date,
-        'birth_city': birth_city,
-        'birth_country': birth_country,
-        'photo_url': photo_url,
-        'user_id': user_id,
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    child_id = child_manager.get_child_id_by_user_id(user_id)
+    data = {
+        'photo_url': photo_path,
     }
-    try:
-        child_manager.record_child_in_db(child_data)
-        await message.answer('Данные о ребенке успешно записаны в базу данных!')
-
-    except Exception as ex:
-        print(ex)
-        await message.answer(f'произошла ошибка {ex}!')
-
+    child_manager.update_child_in_db(child_id=child_id, new_data=data)
+    await state.update_data(photo_url=photo_path)
 
     # ОТНИМАЕМ ОТ number_of_children ОДИН, ПОТОМ СОХРАНЯЕМ number_of_children, И ПЕРЕДАЁМ ЗНАЧЕНИЕ В ФУНКЦИЮ
 
@@ -776,6 +786,7 @@ async def payment(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'payment_done')
 async def editing_data(callback: CallbackQuery):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
     telegram_user_id = callback.from_user.id
     data = users_manager.get_user_by_telegram_id(telegram_user_id)
     print(data)
@@ -812,7 +823,7 @@ async def editing_data(callback: CallbackQuery):
     )
 
     if data['marital_status'] == 'Married and my spouse is NOT a U.S.citizen':
-        spouse_data = spouse_manager.get_spouse_by_telegram_id(telegram_user_id)
+        spouse_data = spouse_manager.get_spouse_by_user_id(user_id)
 
         await callback.message.answer(
             text=f'''
@@ -835,7 +846,7 @@ async def editing_data(callback: CallbackQuery):
             caption='фото вашего супруга',
         )
 
-    child_data = child_manager.get_children_by_telegram_id(telegram_user_id)
+    child_data = child_manager.get_children_by_user_id(user_id)
     if child_data != []:
         for data in child_data:
             child_photo_url = data['photo_url']

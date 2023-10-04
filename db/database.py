@@ -148,6 +148,15 @@ class SpouseManager:
             user_data = result.fetchone()
         return user_data._mapping
 
+    def get_spouse_by_user_id(self, user_id):
+        query = select(self.spouse).where(self.spouse.c.user_id == user_id).order_by(
+            self.spouse.c.id.desc())
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_data = result.fetchone()
+        return user_data._mapping
+
     def get_spouse_id_by_user_id(self, user_id):
         query = select(self.spouse).where(self.spouse.c.user_id == user_id).order_by(
             desc(self.spouse.columns.id))
@@ -214,5 +223,32 @@ class ChildManager:
         return [user._mapping for user in
                 user_data]
 
+    def get_children_by_user_id(self, user_id):
+        query = select(self.child).where(self.child.c.user_id == user_id).order_by(
+            self.child.c.id.desc())
+
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            user_data = result.fetchall()
+        return [user._mapping for user in
+                user_data]
+
+    def get_child_id_by_user_id(self, user_id):
+        query = select(self.child).where(self.child.c.user_id == user_id).order_by(
+            desc(self.child.columns.id))
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            row = result.first()
+            if row:
+                child_id = row[0]
+            else:
+                child_id = None
+        return child_id
+
+    def update_child_in_db(self, child_id, new_data):
+        stmt = self.child.update().where(self.child.columns.id == child_id).values(**new_data)
+        with self.engine.connect() as connect:
+            connect.execute(stmt)
+            connect.commit()
 
 child_manager = ChildManager(engine=engine)
