@@ -397,6 +397,14 @@ async def spouse_name(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SpouseState.name)
 async def spouse_surname(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'user_id': user_id,
+        'name': message.text,
+        'telegram_user_id': message.from_user.id,
+    }
+    spouse_manager.record_spouse_in_db(data)
+
     await state.update_data(name=message.text)
     await message.answer(
         text="укажите фамилию вашего супруга",
@@ -406,6 +414,14 @@ async def spouse_surname(message: Message, state: FSMContext):
 
 @router.message(SpouseState.surname)
 async def spouse_birth_data(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    print(user_id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    print(spouse_id)
+    data = {
+        'surname': message.text,
+    }
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
     await state.update_data(surname=message.text)
     await message.answer(
         text="укажите дату рождения вашего супруга",
@@ -415,6 +431,12 @@ async def spouse_birth_data(message: Message, state: FSMContext):
 
 @router.message(SpouseState.birth_date, lambda message: is_valid_date(message.text))
 async def spouse_gender(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    data = {
+        'birth_date': message.text,
+    }
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
     await state.update_data(birth_date=message.text)
     await message.answer(
         text="укажите пол вашего супруга",
@@ -432,6 +454,12 @@ async def wrong_date(message: Message):
 
 @router.callback_query(SpouseState.gender)
 async def spouse_birth_city(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    data = {
+        'gender': callback.data,
+    }
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
     await state.update_data(gender=callback.data)
 
     unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
@@ -452,6 +480,12 @@ async def spouse_birth_city(callback: CallbackQuery, state: FSMContext):
 
 @router.message(SpouseState.birth_city)
 async def spouse_birth_country(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    data = {
+        'birth_city': message.text,
+    }
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
     await state.update_data(birth_city=message.text)
     await message.answer(
         text="укажите страну рождения вашего супруга",
@@ -461,6 +495,12 @@ async def spouse_birth_country(message: Message, state: FSMContext):
 
 @router.message(SpouseState.birth_country)
 async def spouse_photo(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    data = {
+        'birth_country': message.text,
+    }
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
     await state.update_data(birth_country=message.text)
     await message.answer(
         text="отправьте фотографию вашего супруга",
@@ -481,41 +521,14 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
         message.photo[-1],
         destination=photo_path
     )
-
-    await state.update_data(photo_url=photo_path)
-
-    data = await state.get_data()
-    spouse_manager.create_table()
-    name = data['name']
-    surname = data['surname']
-    gender = data['gender']
-    birth_date = data['birth_date']
-    birth_city = data['birth_city']
-    birth_country = data['birth_country']
-    photo_url = data['photo_url']
-    user_id = users_manager.get_user_id_by_telegram_user_id(telegram_user_id)
-    print(user_id)
-    spouse_data = {
-        'telegram_user_id': telegram_user_id,
-        'name': name,
-        'surname': surname,
-        'gender': gender,
-        'birth_date': birth_date,
-        'birth_city': birth_city,
-        'birth_country': birth_country,
-        'photo_url': photo_url,
-        'user_id': user_id,
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    spouse_id = spouse_manager.get_spouse_id_by_user_id(user_id)
+    data = {
+        'photo_url': photo_path,
     }
-    try:
-        spouse_manager.record_spouse_in_db(spouse_data)
-        await message.answer('Данные о супруге успешно записаны в базу данных!')
-
-    except Exception as ex:
-        print(ex)
-        await message.answer(f'произошла ошибка {ex}!')
-
-    finally:
-        await state.clear()
+    spouse_manager.update_spouse_in_db(spouse_id=spouse_id, new_data=data)
+    await state.update_data(photo_url=photo_path)
+    await state.clear()
 
     unknowncity_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='продолжить заполнение',
@@ -530,7 +543,6 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
         text='чтобы продолжить заполнять анкету, вам нужно добавить сведения о детях',
         reply_markup=markup,
     )
-    # await state.set_state(ChildState.number_of_children)
 
 
 @router.callback_query(F.data == 'add_children')

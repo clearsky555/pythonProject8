@@ -148,6 +148,24 @@ class SpouseManager:
             user_data = result.fetchone()
         return user_data._mapping
 
+    def get_spouse_id_by_user_id(self, user_id):
+        query = select(self.spouse).where(self.spouse.c.user_id == user_id).order_by(
+            desc(self.spouse.columns.id))
+        with self.engine.connect() as connect:
+            result = connect.execute(query)
+            row = result.first()
+            if row:
+                spouse_id = row[0]
+            else:
+                spouse_id = None
+        return spouse_id
+
+    def update_spouse_in_db(self, spouse_id, new_data):
+        stmt = self.spouse.update().where(self.spouse.columns.id == spouse_id).values(**new_data)
+        with self.engine.connect() as connect:
+            connect.execute(stmt)
+            connect.commit()
+
 
 spouse_manager = SpouseManager(engine=engine)
 
