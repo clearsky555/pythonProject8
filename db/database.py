@@ -10,6 +10,8 @@ from sqlalchemy import (
     ForeignKey,
     select,
     text,
+    desc,
+    update,
 )
 
 from config import MYSQL_URL
@@ -60,15 +62,28 @@ class UsersManager:
             connect.commit()
 
     def get_user_id_by_telegram_user_id(self, telegram_user_id):
-        query = select(self.user.columns.id).where(self.user.columns.telegram_user_id == telegram_user_id)
+        query = select(self.user.columns.id).where(self.user.columns.telegram_user_id == telegram_user_id).order_by(
+            desc(self.user.columns.id))
 
         with self.engine.connect() as connect:
             result = connect.execute(query)
-            user_id = result.scalar()
+            row = result.first()
+            if row:
+                user_id = row[0]
+            else:
+                user_id = None
         return user_id
 
+    def update_user_in_db(self, user_id, new_data):
+        stmt = self.user.update().where(self.user.columns.id == user_id).values(**new_data)
+
+        with self.engine.connect() as connect:
+            connect.execute(stmt)
+            connect.commit()
+
     def get_user_by_telegram_id(self, telegram_user_id):
-        query = select(self.user).where(self.user.c.telegram_user_id == telegram_user_id).order_by(self.user.c.id.desc())
+        query = select(self.user).where(self.user.c.telegram_user_id == telegram_user_id).order_by(
+            self.user.c.id.desc())
 
         with self.engine.connect() as connect:
             result = connect.execute(query)
@@ -125,7 +140,8 @@ class SpouseManager:
             connect.commit()
 
     def get_spouse_by_telegram_id(self, telegram_user_id):
-        query = select(self.spouse).where(self.spouse.c.telegram_user_id == telegram_user_id).order_by(self.spouse.c.id.desc())
+        query = select(self.spouse).where(self.spouse.c.telegram_user_id == telegram_user_id).order_by(
+            self.spouse.c.id.desc())
 
         with self.engine.connect() as connect:
             result = connect.execute(query)
@@ -176,9 +192,9 @@ class ChildManager:
 
         with self.engine.connect() as connect:
             result = connect.execute(query)
-            user_data = result.fetchall()  # Используйте fetchall(), чтобы получить все строки с данными
+            user_data = result.fetchall()
         return [user._mapping for user in
-                user_data]  # Преобразуйте результат в список словарей или нужный вам формат данных
+                user_data]
 
 
 child_manager = ChildManager(engine=engine)

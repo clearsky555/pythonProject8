@@ -56,7 +56,12 @@ async def marital_status(callback: CallbackQuery, state: FSMContext):
     print(callback.data)
 
     await state.update_data(education_level=callback.data)
-
+    education_level = callback.data
+    data = {
+        'telegram_user_id': callback.from_user.id,
+        'education_level': education_level
+    }
+    users_manager.record_user_in_db(data)
     await callback.message.answer(
         text="укажите ваше семейное положение",
         reply_markup=get_family_status_button()
@@ -66,6 +71,11 @@ async def marital_status(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(UserState.marital_status)
 async def name(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    data = {
+        'marital_status': callback.data
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(callback.data)
     await state.update_data(marital_status=callback.data)
 
@@ -77,6 +87,11 @@ async def name(callback: CallbackQuery, state: FSMContext):
 
 @router.message(UserState.name)
 async def surname(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'name': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(message.text)
     await state.update_data(name=message.text)
     await message.answer(
@@ -87,6 +102,11 @@ async def surname(message: Message, state: FSMContext):
 
 @router.message(UserState.surname)
 async def gender(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'surname': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(message.text)
     await state.update_data(surname=message.text)
     await message.answer(
@@ -98,6 +118,11 @@ async def gender(message: Message, state: FSMContext):
 
 @router.callback_query(UserState.gender)
 async def birth_date(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    data = {
+        'gender': callback.data
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(callback.data)
     await state.update_data(gender=callback.data)
     await callback.message.answer(
@@ -108,6 +133,11 @@ async def birth_date(callback: CallbackQuery, state: FSMContext):
 
 @router.message(UserState.birth_date, lambda message: is_valid_date(message.text))
 async def birth_city(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'birth_date': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(message.text)
 
     await state.update_data(birth_date=message.text)
@@ -137,6 +167,11 @@ async def wrong_date(message: Message):
 
 @router.message(UserState.birth_city)
 async def birth_country(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'birth_city': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(message.text)
     await state.update_data(birth_city=message.text)
     await message.answer(
@@ -147,6 +182,11 @@ async def birth_country(message: Message, state: FSMContext):
 
 @router.message(UserState.birth_country)
 async def eligibility(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'birth_country': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     print(message.text)
     await state.update_data(birth_country=message.text)
 
@@ -170,12 +210,22 @@ async def eligibility(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'eligibility_yes')
 async def write_eligibility_yes(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    data = {
+        'eligibility': callback.data
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(eligibility=callback.data)
     await ok(message=callback.message, state=state)
 
 
 @router.callback_query(F.data == 'eligibility_no')
 async def eligibility_country(callback: CallbackQuery, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
+    data = {
+        'eligibility': callback.data
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(eligibility=callback.data)
 
     await callback.message.answer(
@@ -186,6 +236,11 @@ async def eligibility_country(callback: CallbackQuery, state: FSMContext):
 
 @router.message(UserState.country_claiming_eligibility)
 async def write_eligibility_no(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'country_claiming_eligibility': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(country_claiming_eligibility=message.text)
     await ok(message=message, state=state)
 
@@ -238,7 +293,11 @@ async def download_photo(message: Message, bot: Bot, state: FSMContext):
     )
 
     await state.update_data(photo_url=photo_path)
-
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'photo_url': photo_path
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await message.answer(
         text="напишите ваш адрес",
     )
@@ -247,6 +306,11 @@ async def download_photo(message: Message, bot: Bot, state: FSMContext):
 
 @router.message(UserState.address_line_1)
 async def city(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'address_line_1': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(address_line_1=message.text)
 
     await message.answer(
@@ -257,6 +321,11 @@ async def city(message: Message, state: FSMContext):
 
 @router.message(UserState.city)
 async def district(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'city': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(city=message.text)
 
     await message.answer(
@@ -267,6 +336,11 @@ async def district(message: Message, state: FSMContext):
 
 @router.message(UserState.district)
 async def district(message: Message, state: FSMContext):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'district': message.text
+    }
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
     await state.update_data(district=message.text)
 
     await message.answer(
@@ -279,59 +353,13 @@ async def district(message: Message, state: FSMContext):
 async def child_and_spouse(message: Message, state: FSMContext):
     data = await state.get_data()
     marital_status = data['marital_status']
-
-    await state.update_data(country=message.text)
-
-    # data = await state.get_data()
-    users_manager.create_table()
-    telegram_user_id = message.from_user.id
-    education_level = data['education_level']
-    marital_status = data['marital_status']
-    name = data['name']
-    surname = data['surname']
-    gender = data['gender']
-    birth_date = data['birth_date']
-    birth_city = data['birth_city']
-    birth_country = data['birth_country']
-    eligibility = data['eligibility']
-    try:
-        country_claiming_eligibility = data['country_claiming_eligibility']
-    except KeyError:
-        country_claiming_eligibility = None
-    photo_url = data['photo_url']
-    address_line_1 = data['address_line_1']
-    city = data['city']
-    district = data['district']
-    country = message.text
-    user_data = {
-        'telegram_user_id': telegram_user_id,
-        'name': name,
-        'surname': surname,
-        'gender': gender,
-        'birth_date': birth_date,
-        'birth_city': birth_city,
-        'birth_country': birth_country,
-        'eligibility': eligibility,
-        'country_claiming_eligibility': country_claiming_eligibility,
-        'photo_url': photo_url,
-        'marital_status': marital_status,
-        'city': city,
-        'address_line_1': address_line_1,
-        'district': district,
-        'country': country,
-        'education_level': education_level,
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    data = {
+        'country': message.text
     }
-    try:
-        users_manager.record_user_in_db(user_data)
-        await message.answer('Данные успешно записаны в базу данных!')
-
-    except Exception as ex:
-        print(ex)
-        await message.answer(f'произошла ошибка {ex}!')
-
-    finally:
-        await state.clear()
-
+    users_manager.update_user_in_db(user_id=user_id, new_data=data)
+    await state.update_data(country=message.text)
+    await state.clear()
 
     yes_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='добавить супруга',
@@ -356,59 +384,6 @@ async def child_and_spouse(message: Message, state: FSMContext):
         text="если у вас есть супруг или ребенок, вам нужно заполнить их данные",
         reply_markup=markup
     )
-
-
-# @router.callback_query(F.data == 'end')
-# async def end(callback: CallbackQuery, state: FSMContext):
-#     data = await state.get_data()
-#     users_manager.create_table()
-#     telegram_user_id = callback.from_user.id
-#     education_level = data['education_level']
-#     marital_status = data['marital_status']
-#     name = data['name']
-#     surname = data['surname']
-#     gender = data['gender']
-#     birth_date = data['birth_date']
-#     birth_city = data['birth_city']
-#     birth_country = data['birth_country']
-#     eligibility = data['eligibility']
-#     try:
-#         country_claiming_eligibility = data['country_claiming_eligibility']
-#     except KeyError:
-#         country_claiming_eligibility = None
-#     photo_url = data['photo_url']
-#     address_line_1 = data['address_line_1']
-#     city = data['city']
-#     district = data['district']
-#     country = data['country']
-#     user_data = {
-#         'telegram_user_id': telegram_user_id,
-#         'name': name,
-#         'surname': surname,
-#         'gender': gender,
-#         'birth_date': birth_date,
-#         'birth_city': birth_city,
-#         'birth_country': birth_country,
-#         'eligibility': eligibility,
-#         'country_claiming_eligibility': country_claiming_eligibility,
-#         'photo_url': photo_url,
-#         'marital_status': marital_status,
-#         'city': city,
-#         'address_line_1': address_line_1,
-#         'district': district,
-#         'country': country,
-#         'education_level': education_level,
-#     }
-#     try:
-#         users_manager.record_user_in_db(user_data)
-#         await callback.message.answer('Данные успешно записаны в базу данных!')
-#
-#     except Exception as ex:
-#         print(ex)
-#         await callback.message.answer(f'произошла ошибка {ex}!')
-#
-#     finally:
-#         await state.clear()
 
 
 @router.callback_query(F.data == 'spouse_yes')
