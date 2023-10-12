@@ -1,12 +1,14 @@
 import os
 import uuid
 
+from aiogram.enums import ContentType
 from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, PhotoSize, FSInputFile
 from aiogram import Router, F, Bot
-from aiogram.filters import Command, StateFilter
+from aiogram.filters import Command, StateFilter, BaseFilter, Filter
 from aiogram.fsm.context import FSMContext
 
-from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button, get_user_edit_button
+from bot_utils.keyboards import get_welcome_kb, get_level_education_button, get_family_status_button, get_gender_button, \
+    get_user_edit_button
 from state import UserState, SpouseState, ChildState, UserEditState
 from db.database import users_manager, spouse_manager, child_manager
 from bot_utils.utils import is_valid_date
@@ -20,7 +22,16 @@ async def cmd_start(message: Message):
         'Добро пожаловать! Я бот для регистрации на лотерею green card',
         reply_markup=get_welcome_kb()
     )
+    users_manager.create_table()
+    spouse_manager.create_table()
+    child_manager.create_table()
 
+
+# @router.message(order, Command('pay'))
+# @router.pre_checkout_query(pre_checkout_query)
+# @router.message(successful_payment, F.ContentType.SUCCESSFUL_PAYMENT)
+# @router.message(successful_payment, F.contains(ContentType.SUCCESSFUL_PAYMENT))
+# @router.message(successful_payment, F.content_type == ContentType.SUCCESSFUL_PAYMENT)
 
 @router.callback_query(F.data == 'info')
 async def get_info(callback: CallbackQuery):
@@ -45,12 +56,15 @@ async def get_cancel(callback: CallbackQuery):
 @router.callback_query(F.data == 'register')
 async def education_level(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer(
-        text="ваш наивысший уровень образования/highest level of education",
+        text="ваш наивысший уровень образования/highest level of education/ВАЛИДАТОР НА НАЖАТИЕ КНОПКИ, ФИЛЬТРУЕТ ТЕКСТ",
         reply_markup=get_level_education_button()
     )
     await state.set_state(UserState.education_level)
 
 
+# @router.callback_query(StateFilter(UserState.education_level), F(text=['primary school only']))
+# @router.callback_query(UserState.education_level, lambda callback: callback.data in ['primary school only'])
+# @router.callback_query(UserState.education_level, F.data == 'primary school only')
 @router.callback_query(UserState.education_level)
 async def marital_status(callback: CallbackQuery, state: FSMContext):
     print(callback.data)
@@ -69,6 +83,14 @@ async def marital_status(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserState.marital_status)
 
 
+@router.message(UserState.education_level, F.text.isalpha())
+async def wrong_education(message: Message):
+    await message.answer(
+        text="выберите ваш уровень образования",
+        reply_markup=get_level_education_button()
+    )
+
+
 @router.callback_query(UserState.marital_status)
 async def name(callback: CallbackQuery, state: FSMContext):
     user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
@@ -80,12 +102,12 @@ async def name(callback: CallbackQuery, state: FSMContext):
     await state.update_data(marital_status=callback.data)
 
     await callback.message.answer(
-        text="укажите ваше имя",
+        text="укажите ваше имя(ВАЛИДАТОР НА ВВОД ТЕКСТА. ЧИСЛА И ФОТКИ НЕ ПРИНИМАЮТСЯ)",
     )
     await state.set_state(UserState.name)
 
 
-@router.message(UserState.name)
+@router.message(UserState.name, F.text.isalpha())
 async def surname(message: Message, state: FSMContext):
     user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
     data = {
@@ -98,6 +120,13 @@ async def surname(message: Message, state: FSMContext):
         text="укажите вашу фамилию",
     )
     await state.set_state(UserState.surname)
+
+
+@router.message(UserState.name)
+async def wrong_name(message: Message):
+    await message.answer(
+        text="вы неверно написали имя",
+    )
 
 
 @router.message(UserState.surname)
@@ -388,7 +417,6 @@ async def child_and_spouse(message: Message, state: FSMContext):
 
 @router.callback_query(F.data == 'spouse_yes')
 async def spouse_name(callback: CallbackQuery, state: FSMContext):
-
     await callback.message.answer(
         text="введите имя вашего супруга",
     )
@@ -547,7 +575,6 @@ async def spouse_download_photo(message: Message, bot: Bot, state: FSMContext):
 
 @router.callback_query(F.data == 'add_children')
 async def common_number_of_children(callback: CallbackQuery, state: FSMContext):
-
     nochild_btn: InlineKeyboardButton = InlineKeyboardButton(
         text='если у вас нет детей, нажмите сюда (завершить заполнение анкеты)',
         callback_data='payment')
@@ -767,7 +794,6 @@ async def child_download_photo(message: Message, bot: Bot, state: FSMContext):
 
 @router.callback_query(F.data == 'payment')
 async def payment(callback: CallbackQuery):
-
     text = ('Вы заполнили анкету для участия в green card 2023! После оплаты вы сможете посмотреть вашу анкету и'
             ' отредактировать её при необходимости!')
     payment_btn: InlineKeyboardButton = InlineKeyboardButton(
@@ -784,15 +810,15 @@ async def payment(callback: CallbackQuery):
     )
 
 
-@router.callback_query(F.data == 'payment_done')
-async def editing_data(callback: CallbackQuery):
-    user_id = users_manager.get_user_id_by_telegram_user_id(callback.from_user.id)
-    telegram_user_id = callback.from_user.id
+# @router.callback_query(F.data == 'payment_done')
+async def editing_data(message: Message):
+    user_id = users_manager.get_user_id_by_telegram_user_id(message.from_user.id)
+    telegram_user_id = message.from_user.id
     data = users_manager.get_user_by_telegram_id(telegram_user_id)
     print(data)
     photo_url = data['photo_url']
 
-    await callback.message.answer(
+    await message.answer(
         text=f'''
 Пожалуйста, проверьте правильность заполнения вашей анкеты
 имя = {data['name']}
@@ -813,11 +839,11 @@ async def editing_data(callback: CallbackQuery):
     )
 
     photo = FSInputFile(path=photo_url)
-    await callback.message.answer_photo(
+    await message.answer_photo(
         photo=photo,
         caption='ваше фото',
     )
-    await callback.message.answer(
+    await message.answer(
         text='если в анкете есть неточности, нажмите на одну из соответствующих кнопок',
         reply_markup=get_user_edit_button()
     )
@@ -825,7 +851,7 @@ async def editing_data(callback: CallbackQuery):
     if data['marital_status'] == 'Married and my spouse is NOT a U.S.citizen':
         spouse_data = spouse_manager.get_spouse_by_user_id(user_id)
 
-        await callback.message.answer(
+        await message.answer(
             text=f'''
         Пожалуйста, проверьте правильность заполнения анкеты вашего супруга
         имя = {spouse_data['name']}
@@ -841,7 +867,7 @@ async def editing_data(callback: CallbackQuery):
 
         photo = FSInputFile(path=spouse_photo_url)
 
-        await callback.message.answer_photo(
+        await message.answer_photo(
             photo=photo,
             caption='фото вашего супруга',
         )
@@ -852,7 +878,7 @@ async def editing_data(callback: CallbackQuery):
             child_photo_url = data['photo_url']
 
             photo = FSInputFile(path=child_photo_url)
-            await callback.message.answer(
+            await message.answer(
                 text=f'''
             Пожалуйста, проверьте правильность заполнения анкеты вашего ребенка
         имя = {data['name']}
@@ -863,10 +889,11 @@ async def editing_data(callback: CallbackQuery):
         страна рождения = {data['birth_country']}
                     '''
             )
-            await callback.message.answer_photo(
+            await message.answer_photo(
                 photo=photo,
                 caption='фото вашего ребенка',
             )
+
 
 @router.callback_query(F.data == 'user_name_edit')
 async def user_name_edit(callback: CallbackQuery, state: FSMContext):

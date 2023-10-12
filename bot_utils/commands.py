@@ -7,7 +7,11 @@ async def set_commands(bot: Bot):
         BotCommand(
             command='start',
             description='начало/перезапуск бота'
-        )
+        ),
+        # BotCommand(
+        #     command='pay',
+        #     description='купить продукт'
+        # )
     ]
 
     await bot.set_my_commands(commands, BotCommandScopeDefault())
